@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>배드민턴 복식 리그전 운영</title>
+<style>
+  :root {
+    --court: #1b6b4c;        /* 코트 그린 */
+    --court-dark: #134d37;
+    --line: #f4f4ee;         /* 코트 라인 */
+    --shuttle: #f5a623;      /* 셔틀콕 코르크 */
+    --ink: #16201b;
+    --paper: #f6f7f3;
+    --card: #ffffff;
+    --muted: #6a7a72;
+    --border: #d9e2dc;
+    --win: #1b6b4c;
+    --loss: #b04a3f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* ---------- Header ---------- */
+  header {
+    background: var(--court);
+    color: var(--line);
+    padding: 28px 20px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .header-inner { max-width: 1080px; margin: 0 auto; position: relative; z-index: 2; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--shuttle); font-weight: 700; margin-bottom: 6px;
+  }
+  header h1 {
+    font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -0.02em;
+  }
+  header p { color: #b6cdc1; margin-top: 6px; font-size: 14px; }
+  /* court net stripe under header */
+  .net {
+    margin-top: 22px; height: 14px;
+    background: repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 12px);
+    opacity: .5;
+  }
+  nav {
+    background: var(--court-dark);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .nav-inner {
+    max-width: 1080px; margin: 0 auto; display: flex; gap: 2px; padding: 0 12px;
+    overflow-x: auto;
+  }
+  nav button {
+    background: none; border: none; color: #9fb8ac; cursor: pointer;
+    padding: 14px 18px; font-size: 14px; font-weight: 600; white-space: nowrap;
+    border-bottom: 3px solid transparent; font-family: inherit;
+  }
+  nav button:hover { color: var(--line); }
+  nav button.active { color: var(--line); border-bottom-color: var(--shuttle); }
+  main { max-width: 1080px; margin: 0 auto; padding: 28px 20px 80px; }
+  .view { display: none; }
+  .view.active { display: block; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  h2.section-title {
+    font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 4px;
+  }
+  .section-sub { color: var(--muted); font-size: 14px; margin-bottom: 22px; }
+  /* ---------- Cards / forms ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; margin-bottom: 18px;
+  }
+  label { font-size: 13px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 5px; }
+  input[type=text], input[type=number], select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
+    font-size: 14px; font-family: inherit; background: var(--paper); color: var(--ink);
+  }
+  input:focus, select:focus { outline: 2px solid var(--court); border-color: var(--court); }
+  .btn {
+    background: var(--court); color: var(--line); border: none; padding: 11px 18px;
+    border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .btn:hover { background: var(--court-dark); }
+  .btn.ghost { background: none; color: var(--court); border: 1px solid var(--court); }
+  .btn.ghost:hover { background: rgba(27,107,76,.08); }
+  .btn.warn { background: none; color: var(--loss); border: 1px solid var(--loss); }
+  .btn.warn:hover { background: rgba(176,74,63,.08); }
+  .btn.sm { padding: 6px 12px; font-size: 13px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+  .row > div { flex: 1; min-width: 140px; }
+  /* ---------- Team list ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 11px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; }
+  tbody tr:hover { background: var(--paper); }
+  .team-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 7px; background: var(--court);
+    color: var(--line); font-weight: 800; font-size: 12px; margin-right: 8px;
+  }
+  .pill { font-size: 12px; padding: 2px 9px; border-radius: 20px; font-weight: 700; }
+  .pill.done { background: rgba(27,107,76,.12); color: var(--court); }
+  .pill.pending { background: #f0ece2; color: var(--muted); }
+  .num { text-align: center; font-variant-numeric: tabular-nums; }
+  /* ---------- Schedule ---------- */
+  .round-block { margin-bottom: 22px; }
+  .round-head {
+    display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px;
+    border-bottom: 2px solid var(--court); padding-bottom: 6px;
+  }
+  .round-head h3 { font-size: 17px; font-weight: 800; }
+  .round-head .meta { font-size: 12px; color: var(--muted); }
+  .courts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .slot-label {
+    font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .05em;
+    margin: 12px 0 8px; text-transform: uppercase;
+  }
+  .slot-label:first-of-type { margin-top: 4px; }
+  /* ---------- Reviews ---------- */
+  .review-toggle {
+    width: 100%; margin-top: 8px; background: none; border: 1px dashed var(--border);
+    border-radius: 8px; padding: 7px; font-size: 12px; font-weight: 700; color: var(--court);
+    cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .review-toggle:hover { background: rgba(27,107,76,.06); border-color: var(--court); }
+  .rev-count {
+    background: var(--shuttle); color: var(--ink); font-size: 11px; font-weight: 800;
+    border-radius: 10px; padding: 0 7px; line-height: 16px; min-width: 16px; text-align: center;
+  }
+  .reviews { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .review-item { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .rev-link {
+    flex: 1; font-size: 12px; color: var(--court); text-decoration: none; font-weight: 600;
+    background: rgba(27,107,76,.07); padding: 6px 8px; border-radius: 7px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rev-link:hover { text-decoration: underline; }
+  .rev-del {
+    background: none; border: none; color: var(--loss); cursor: pointer; font-size: 13px;
+    font-weight: 800; padding: 2px 6px; flex: 0 0 auto;
+  }
+  .rev-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 4px 0 8px; }
+  .rev-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+  .rev-form input { padding: 7px 9px; font-size: 12px; }
+  .rev-form .btn { width: 100%; }
+  .match {
+    border: 1px solid var(--border); border-radius: 11px; padding: 12px; background: var(--card);
+  }
+  .match .court-tag {
+    font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--shuttle);
+    text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between;
+  }
+  .match .slot { font-size: 10px; color: var(--muted); }
+  .vs-row { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+  .vs-row .t { flex: 1; }
+  .vs-row .t.right { text-align: right; }
+  .vs-row .sc { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 18px; text-align: center; }
+  .vs-row .x { color: var(--muted); font-size: 12px; }
+  .winner { color: var(--win); }
+  .match .enter { margin-top: 10px; }
+  /* ---------- Standings ---------- */
+  .rank-1 td:first-child .rk { background: var(--shuttle); color: var(--ink); }
+  .rank-2 td:first-child .rk, .rank-3 td:first-child .rk { background: var(--court); color: var(--line); }
+  .rk {
+    display: inline-flex; width: 24px; height: 24px; border-radius: 50%;
+    align-items: center; justify-content: center; font-weight: 800; font-size: 13px;
+    background: #eef0ea; color: var(--ink);
+  }
+  /* ---------- Modal ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(19,33,27,.55); display: none;
+    align-items: center; justify-content: center; z-index: 100; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .modal { background: var(--card); border-radius: 16px; padding: 24px; width: 100%; max-width: 380px; }
+  .modal h3 { font-size: 18px; margin-bottom: 4px; }
+  .modal .teams-line { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+  .score-grid { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px; }
+  .score-grid input { width: 70px; text-align: center; font-size: 20px; font-weight: 800; padding: 12px; }
+  .score-grid .label { font-size: 12px; color: var(--muted); text-align: center; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions .btn { flex: 1; }
+  .empty { text-align: center; color: var(--muted); padding: 50px 20px; }
+  .empty .big { font-size: 40px; margin-bottom: 10px; }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; align-items: center; }
+  .toolbar .spacer { flex: 1; }
+  .stat-strip { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 18px; flex: 1; min-width: 120px;
+  }
+  .stat .v { font-size: 26px; font-weight: 800; color: var(--court); font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .legend { font-size: 12px; color: var(--muted); margin-top: 12px; }
+  /* ---------- Admin ---------- */
+  .admin-bar {
+    position: absolute; top: 22px; right: 20px; z-index: 3;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .admin-bar .status {
+    font-size: 12px; font-weight: 700; color: #b6cdc1;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .admin-bar .dot { width: 8px; height: 8px; border-radius: 50%; background: #6a7a72; }
+  .admin-bar.on .dot { background: var(--shuttle); box-shadow: 0 0 0 3px rgba(245,166,35,.25); }
+  .admin-bar .btn { padding: 7px 14px; font-size: 13px; }
+  .admin-btn {
+    background: var(--shuttle); color: var(--ink); border: none; border-radius: 8px;
+    padding: 7px 14px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .admin-btn:hover { filter: brightness(.95); }
+  .admin-btn.logout { background: rgba(255,255,255,.15); color: var(--line); }
+  /* hidden when not admin */
+  body:not(.is-admin) .admin-only { display: none !important; }
+  .lock-note {
+    background: #fff7e8; border: 1px solid #f0d9a8; color: #8a6418;
+    border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 600;
+    margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
+  }
+  body.is-admin .lock-note { display: none; }
+  /* date pill on schedule */
+  .date-tag {
+    font-size: 12px; font-weight: 800; color: var(--court);
+    background: rgba(27,107,76,.1); padding: 3px 10px; border-radius: 20px;
+  }
+  .start-row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+  .start-row > div { min-width: 150px; }
+  @media (max-width: 560px) {
+    th.hide-m, td.hide-m { display: none; }
+    .admin-bar { position: static; justify-content: flex-end; padding: 0 0 14px; }
+    header { padding-top: 20px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="admin-bar" id="admin-bar">
+    <span class="status"><span class="dot"></span><span id="admin-status">보기 모드</span></span>
+    <span class="status" id="sync-status" style="display:none"><span class="dot" style="background:#4a9">●</span><span id="sync-text">실시간 동기화</span></span>
+    <button class="admin-btn" id="admin-login-btn" onclick="openAdminModal()">관리자 로그인</button>
+    <button class="admin-btn logout admin-only" onclick="adminLogout()">로그아웃</button>
+  </div>
+  <div class="header-inner">
+    <div class="eyebrow">중학교 체육 · 복식 풀리그</div>
+    <h1>배드민턴 리그전 운영</h1>
+    <p>20팀 라운드 로빈 · 코트 4면 · 점심 전후 2경기 운영</p>
+  </div>
+  <div class="net"></div>
+</header>
+
+<nav>
+  <div class="nav-inner">
+    <button class="tab active" data-view="teams">팀 등록</button>
+    <button class="tab" data-view="schedule">일정표</button>
+    <button class="tab" data-view="bracket">대진표</button>
+    <button class="tab" data-view="standings">순위</button>
+  </div>
+</nav>
+
+<main>
+  <!-- ===== TEAMS ===== -->
+  <section class="view active" id="view-teams">
+    <h2 class="section-title">팀 등록</h2>
+    <p class="section-sub">복식 팀 20개를 등록하세요. 팀명과 선수 2명을 입력합니다.</p>
+
+    <div class="lock-note">🔒 보기 모드입니다. 팀 등록·수정은 관리자 로그인 후 가능합니다.</div>
+
+    <div class="card admin-only">
+      <div class="row">
+        <div style="flex:1.2"><label>팀명</label><input type="text" id="t-name" placeholder="예: 3-1 번개"></div>
+        <div><label>선수 1</label><input type="text" id="t-p1" placeholder="이름"></div>
+        <div><label>선수 2</label><input type="text" id="t-p2" placeholder="이름"></div>
+        <div style="flex:0 0 auto; min-width:auto"><label>&nbsp;</label><button class="btn" onclick="addTeam()">팀 추가</button></div>
+      </div>
+      <p class="legend">엔터로도 추가할 수 있어요. 빠르게 채우려면 <a href="#" onclick="fillSample();return false;" style="color:var(--court);font-weight:700">예시 20팀 자동 입력</a></p>
+    </div>
+
+    <div class="toolbar">
+      <strong id="team-count">0 / 20 팀</strong>
+      <div class="spacer"></div>
+      <button class="btn warn sm admin-only" onclick="resetAll()">전체 초기화</button>
+    </div>
+
+    <div class="card" style="padding:0; overflow:hidden">
+      <table>
+        <thead>
+          <tr><th style="width:46px">#</th><th>팀명</th><th class="hide-m">선수</th><th style="width:90px"></th></tr>
+        </thead>
+        <tbody id="team-tbody"></tbody>
+      </table>
+      <div id="team-empty" class="empty"><div class="big">🏸</div>아직 등록된 팀이 없습니다.</div>
+    </div>
+  </section>
+
+  <!-- ===== SCHEDULE ===== -->
+  <section class="view" id="view-schedule">
+    <h2 class="section-title">일정표</h2>
+    <p class="section-sub">평일 매일 코트 4면 × 2경기(점심 전·후) = 하루 8경기. 시작일부터 주말을 건너뛰고 자동 배정됩니다.</p>
+
+    <div class="card admin-only">
+      <div class="start-row">
+        <div>
+          <label>리그 시작일 (평일)</label>
+          <input type="date" id="start-date">
+        </div>
+        <div style="flex:0 0 auto;min-width:auto">
+          <label>&nbsp;</label>
+          <button class="btn" onclick="generateSchedule()">대진 자동 편성</button>
+        </div>
+        <div style="flex:0 0 auto;min-width:auto">
+          <label>&nbsp;</label>
+          <button class="btn ghost" onclick="switchView('teams')">팀 수정</button>
+        </div>
+      </div>
+      <p class="legend">시작일을 정하고 편성하면 토·일은 자동으로 건너뛰고 평일에만 하루 8경기씩 배정됩니다.</p>
+    </div>
+
+    <div class="lock-note">🔒 보기 모드입니다. 일정 편성과 결과 입력은 관리자만 가능합니다.</div>
+
+    <div class="toolbar">
+      <span id="sched-info" class="legend" style="margin:0"></span>
+    </div>
+    <div id="schedule-body"></div>
+  </section>
+
+  <!-- ===== BRACKET (cross table) ===== -->
+  <section class="view" id="view-bracket">
+    <h2 class="section-title">대진표</h2>
+    <p class="section-sub">팀별 상대 전적 교차표. 칸을 누르면 결과를 입력할 수 있습니다. (행 팀 기준 승–패)</p>
+    <div class="card" style="padding:0; overflow:auto">
+      <div id="bracket-body"></div>
+    </div>
+  </section>
+
+  <!-- ===== STANDINGS ===== -->
+  <section class="view" id="view-standings">
+    <h2 class="section-title">순위표</h2>
+    <p class="section-sub">승점 → 승수 → 게임 득실 → 승자승 순으로 자동 정렬됩니다. (승 2점, 패 0점)</p>
+    <div class="stat-strip" id="stat-strip"></div>
+    <div class="card" style="padding:0; overflow:auto">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:50px">순위</th><th>팀</th>
+            <th class="num">경기</th><th class="num">승</th><th class="num">패</th>
+            <th class="num hide-m">게임득</th><th class="num hide-m">게임실</th>
+            <th class="num">득실</th><th class="num">승점</th>
+          </tr>
+        </thead>
+        <tbody id="standings-tbody"></tbody>
+      </table>
+      <div id="standings-empty" class="empty"><div class="big">📊</div>대진을 편성하면 순위가 표시됩니다.</div>
+    </div>
+  </section>
+</main>
+
+<!-- ===== Admin Login Modal ===== -->
+<div class="overlay" id="admin-overlay">
+  <div class="modal">
+    <h3>관리자 로그인</h3>
+    <p class="teams-line">결과 입력·수정과 일정 편성은 관리자만 할 수 있습니다.</p>
+    <div>
+      <label>비밀번호</label>
+      <input type="password" id="admin-pw" placeholder="비밀번호 입력">
+      <p class="legend" id="admin-err" style="color:var(--loss);display:none">비밀번호가 올바르지 않습니다.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeAdminModal()">취소</button>
+      <button class="btn" onclick="adminLogin()">로그인</button>
+    </div>
+    <p class="legend" style="text-align:center">기본 비밀번호: <strong>admin1234</strong> (코드에서 변경 가능)</p>
+  </div>
+</div>
+
+<!-- ===== Score Modal ===== -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>경기 결과 입력</h3>
+    <p class="teams-line" id="modal-teams"></p>
+    <div class="score-grid">
+      <div>
+        <input type="number" id="score-a" min="0" max="99" value="0">
+        <div class="label" id="label-a">팀 A</div>
+      </div>
+      <div style="font-weight:800;color:var(--muted)">:</div>
+      <div>
+        <input type="number" id="score-b" min="0" max="99" value="0">
+        <div class="label" id="label-b">팀 B</div>
+      </div>
+    </div>
+    <p class="legend" style="text-align:center">이긴 게임 수(세트 스코어)를 입력하세요. 예) 2 : 1</p>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeModal()">취소</button>
+      <button class="btn warn" id="clear-btn" onclick="clearScore()" style="flex:0 0 auto">지우기</button>
+      <button class="btn" onclick="saveScore()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Firebase 연동 (선택) ===== -->
+<script type="module">
+  // ▼▼▼ 1) 파이어베이스 콘솔에서 복사한 firebaseConfig를 여기에 붙여넣으세요 ▼▼▼
+  const firebaseConfig = {
+    apiKey: "AIzaSyDWGM4-WBd6-KBHA9BZbCBZaN31o2Ajihk",
+    authDomain: "badminton-d2649.firebaseapp.com",
+    databaseURL: "https://badminton-d2649-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "badminton-d2649",
+    storageBucket: "badminton-d2649.firebasestorage.app",
+    messagingSenderId: "475322885678",
+    appId: "1:475322885678:web:62f8b1b09f508efcc5e1bf"
+  };
+  // ▲▲▲ 값을 채우기 전까지는 자동으로 '브라우저 저장' 모드로 동작합니다 ▲▲▲
+
+  // 설정값이 비어있으면 파이어베이스를 켜지 않음 (로컬 저장으로 동작)
+  const FB_READY = !String(firebaseConfig.projectId).startsWith("여기에");
+  window.__FB_READY = FB_READY;
+
+  if (FB_READY) {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    const { getDatabase, ref, set, onValue } =
+      await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js");
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const leagueRef = ref(db, "leagues/main");   // 한 리그 = 경로 하나
+
+    // 다른 기기/이 기기의 변경을 실시간 수신
+    onValue(leagueRef, (snap) => {
+      const data = snap.val();
+      if (data && window.__onCloudData) {
+        window.__onCloudData(data);
+      }
+    });
+
+    // 클라우드에 저장하는 함수를 전역으로 노출
+    window.__cloudSave = async (data) => {
+      try { await set(leagueRef, data); } catch (e) { console.error("클라우드 저장 실패", e); }
+    };
+  }
+</script>
+
+<script>
+/* ---------------- State ---------------- */
+const STORE_KEY = 'bml_state_v1';
+const ADMIN_PW = 'admin1234';   // ← 관리자 비밀번호. 필요시 이 값을 바꾸세요.
+let teams = [];          // {id, name, p1, p2}
+let matches = [];        // {id, a, b, sa, sb, played, round, court, slot}
+let startDate = '';      // 'YYYY-MM-DD' 리그 시작일
+let isAdmin = false;
+let editingMatchId = null;
+
+let suppressCloud = false;   // 클라우드에서 받은 데이터 반영 중에는 재저장 막기
+
+function save() {
+  const data = { teams, matches, startDate };
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch(e){}
+  // 파이어베이스가 켜져 있으면 클라우드에도 저장
+  if (window.__FB_READY && window.__cloudSave && !suppressCloud) {
+    window.__cloudSave(data);
+  }
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d) { teams = d.teams || []; matches = d.matches || []; startDate = d.startDate || ''; }
+  } catch(e){}
+  // 관리자 세션은 새로고침해도 유지 (탭 세션 한정)
+  isAdmin = sessionStorage.getItem('bml_admin') === '1';
+}
+
+// 클라우드에서 데이터가 도착하면 화면 갱신
+window.__onCloudData = function(data) {
+  if (!data) return;
+  suppressCloud = true;
+  teams = data.teams || [];
+  matches = data.matches || [];
+  startDate = data.startDate || '';
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({teams, matches, startDate})); } catch(e){}
+  const sd = document.getElementById('start-date');
+  if (sd) sd.value = startDate || (typeof defaultStart==='function'?defaultStart():'');
+  renderAll();
+  suppressCloud = false;
+};
+
+/* ---------------- Admin ---------------- */
+function openAdminModal() {
+  document.getElementById('admin-pw').value = '';
+  document.getElementById('admin-err').style.display = 'none';
+  document.getElementById('admin-overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('admin-pw').focus(), 50);
+}
+function closeAdminModal() {
+  document.getElementById('admin-overlay').classList.remove('show');
+}
+function adminLogin() {
+  const pw = document.getElementById('admin-pw').value;
+  if (pw === ADMIN_PW) {
+    isAdmin = true;
+    sessionStorage.setItem('bml_admin', '1');
+    closeAdminModal();
+    applyAdminUI();
+    renderAll();
+  } else {
+    document.getElementById('admin-err').style.display = 'block';
+  }
+}
+function adminLogout() {
+  isAdmin = false;
+  sessionStorage.removeItem('bml_admin');
+  applyAdminUI();
+  renderAll();
+}
+function applyAdminUI() {
+  document.body.classList.toggle('is-admin', isAdmin);
+  document.getElementById('admin-bar').classList.toggle('on', isAdmin);
+  document.getElementById('admin-status').textContent = isAdmin ? '관리자 모드' : '보기 모드';
+  document.getElementById('admin-login-btn').style.display = isAdmin ? 'none' : 'inline-block';
+}
+function renderAll() {
+  renderTeams(); renderSchedule(); renderBracket(); renderStandings();
+}
+
+/* ---------------- Date helpers ---------------- */
+const WEEKDAY_KR = ['일','월','화','수','목','금','토'];
+// 시작일로부터 평일 기준 n번째(0-base) 날짜 반환
+function weekdayDate(baseStr, n) {
+  if (!baseStr) return null;
+  const d = new Date(baseStr + 'T00:00:00');
+  if (isNaN(d)) return null;
+  // 시작일이 주말이면 다음 평일로 이동
+  while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate()+1);
+  let added = 0;
+  while (added < n) {
+    d.setDate(d.getDate()+1);
+    if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+  }
+  return d;
+}
+function fmtDate(d) {
+  if (!d) return '';
+  return `${d.getMonth()+1}월 ${d.getDate()}일 (${WEEKDAY_KR[d.getDay()]})`;
+}
+function defaultStart() {
+  // 다가오는(또는 오늘) 평일 중 7월 첫 평일 기준 기본값
+  return '2026-07-01';
+}
+
+/* ---------------- Teams ---------------- */
+function addTeam() {
+  const name = document.getElementById('t-name').value.trim();
+  const p1 = document.getElementById('t-p1').value.trim();
+  const p2 = document.getElementById('t-p2').value.trim();
+  if (!name) { document.getElementById('t-name').focus(); return; }
+  if (teams.length >= 20) { alert('최대 20팀까지 등록할 수 있습니다.'); return; }
+  teams.push({ id: Date.now() + Math.random(), name, p1, p2 });
+  document.getElementById('t-name').value = '';
+  document.getElementById('t-p1').value = '';
+  document.getElementById('t-p2').value = '';
+  document.getElementById('t-name').focus();
+  save(); renderTeams();
+}
+function removeTeam(id) {
+  teams = teams.filter(t => t.id !== id);
+  matches = []; // 팀 변경 시 대진 초기화
+  save(); renderTeams(); renderSchedule(); renderBracket(); renderStandings();
+}
+function fillSample() {
+  const names = ['번개','독수리','치타','드래곤','피닉스','샤크','타이거','이글','코브라','팰컨',
+                 '레이저','썬더','스톰','블레이즈','코멧','바이퍼','허리케인','메테오','갤럭시','오리온'];
+  teams = names.map((n,i)=>({id:Date.now()+i, name:(Math.floor(i/2)+1)+'-'+((i%2)+1)+' '+n, p1:'선수'+(i*2+1), p2:'선수'+(i*2+2)}));
+  matches = [];
+  save(); renderTeams();
+}
+function resetAll() {
+  if (!confirm('모든 팀과 경기 결과가 삭제됩니다. 계속할까요?')) return;
+  teams = []; matches = [];
+  save(); renderTeams(); renderSchedule(); renderBracket(); renderStandings();
+}
+function renderTeams() {
+  const tb = document.getElementById('team-tbody');
+  document.getElementById('team-count').textContent = teams.length + ' / 20 팀';
+  document.getElementById('team-empty').style.display = teams.length ? 'none' : 'block';
+  tb.innerHTML = teams.map((t,i)=>`
+    <tr>
+      <td class="num"><span class="team-badge">${i+1}</span></td>
+      <td><strong>${esc(t.name)}</strong></td>
+      <td class="hide-m" style="color:var(--muted)">${esc(t.p1||'-')} · ${esc(t.p2||'-')}</td>
+      <td><button class="btn warn sm admin-only" onclick="removeTeam(${t.id})">삭제</button></td>
+    </tr>`).join('');
+}
+
+/* ---------------- Schedule (round robin + court/slot assignment) ---------------- */
+function generateSchedule() {
+  if (!isAdmin) return;
+  if (teams.length < 2) { alert('최소 2팀이 필요합니다.'); return; }
+  if (matches.length && !confirm('기존 대진과 입력된 결과가 모두 새로 편성됩니다. 계속할까요?')) return;
+
+  const sd = document.getElementById('start-date').value;
+  if (!sd) { alert('리그 시작일을 먼저 선택하세요.'); return; }
+  startDate = sd;
+
+  // circle method round robin
+  let ids = teams.map(t=>t.id);
+  if (ids.length % 2 === 1) ids.push(null); // bye
+  const n = ids.length;
+  const roundsRR = [];
+  let arr = ids.slice();
+  for (let r=0; r<n-1; r++) {
+    const pairs = [];
+    for (let i=0; i<n/2; i++) {
+      const a = arr[i], b = arr[n-1-i];
+      if (a !== null && b !== null) pairs.push([a,b]);
+    }
+    roundsRR.push(pairs);
+    // rotate (keep first fixed)
+    arr = [arr[0], arr[n-1], ...arr.slice(1, n-1)];
+  }
+
+  // flatten all pairings, then chunk into match-days of 8 (4 courts x 2 slots)
+  const allPairs = [];
+  roundsRR.forEach(rp => rp.forEach(p => allPairs.push(p)));
+  const COURTS = 4, SLOTS = 2, PERDAY = COURTS*SLOTS;
+  matches = allPairs.map((p, idx) => {
+    const day = Math.floor(idx / PERDAY);
+    const within = idx % PERDAY;
+    return {
+      id: idx,
+      a: p[0], b: p[1], sa: null, sb: null, played: false,
+      round: day + 1,
+      slot: Math.floor(within / COURTS) + 1,   // 1 = 점심 전, 2 = 점심 후
+      court: (within % COURTS) + 1
+    };
+  });
+  save();
+  renderSchedule(); renderBracket(); renderStandings();
+  switchView('schedule');
+}
+
+function teamName(id){ const t = teams.find(x=>x.id===id); return t ? t.name : '?'; }
+
+function renderSchedule() {
+  const body = document.getElementById('schedule-body');
+  const info = document.getElementById('sched-info');
+  if (!matches.length) {
+    body.innerHTML = `<div class="card empty"><div class="big">📅</div>“대진 자동 편성”을 누르면 일정이 생성됩니다.</div>`;
+    info.textContent = teams.length ? teams.length+'팀 → 총 '+(teams.length*(teams.length-1)/2)+'경기 예정' : '';
+    return;
+  }
+  const totalDays = Math.max(...matches.map(m=>m.round));
+  const playedN = matches.filter(m=>m.played).length;
+  const lastDate = weekdayDate(startDate, totalDays-1);
+  info.textContent = `총 ${matches.length}경기 · ${totalDays}일간 진행 · 입력 ${playedN}/${matches.length}` +
+    (lastDate ? ` · 종료 예정 ${fmtDate(lastDate)}` : '');
+  let html = '';
+  for (let r=1; r<=totalDays; r++) {
+    const dayMatches = matches.filter(m=>m.round===r);
+    const dt = weekdayDate(startDate, r-1);
+    const dateLabel = dt ? fmtDate(dt) : `${r}일차`;
+    html += `<div class="round-block"><div class="round-head"><h3>${dateLabel}</h3>
+      <span class="date-tag">${r}일차</span>
+      <span class="meta">${dayMatches.length}경기 · 코트 4면 · 점심 전후 2슬롯</span></div>`;
+    // 슬롯별로 줄을 나눠 각 줄을 코트 1→4 순으로 배치
+    const slots = [...new Set(dayMatches.map(m=>m.slot))].sort((a,b)=>a-b);
+    slots.forEach(s=>{
+      const rowMatches = dayMatches.filter(m=>m.slot===s).sort((x,y)=> x.court-y.court);
+      html += `<div class="slot-label">${s===1?'점심 전':'점심 후'}</div><div class="courts">`;
+      html += rowMatches.map(m=>matchCard(m)).join('');
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+  body.innerHTML = html;
+}
+
+function matchCard(m) {
+  const done = m.played;
+  const aw = done && m.sa > m.sb, bw = done && m.sb > m.sa;
+  const reviews = m.reviews || [];
+  return `<div class="match">
+    <div class="court-tag"><span>코트 ${m.court}</span><span class="slot">${m.slot===1?'점심 전':'점심 후'}</span></div>
+    <div class="vs-row">
+      <span class="t ${aw?'winner':''}">${esc(teamName(m.a))}</span>
+      <span class="sc ${aw?'winner':''}">${done?m.sa:'–'}</span>
+      <span class="x">:</span>
+      <span class="sc ${bw?'winner':''}">${done?m.sb:'–'}</span>
+      <span class="t right ${bw?'winner':''}">${esc(teamName(m.b))}</span>
+    </div>
+    <div class="enter">
+      <button class="btn ${done?'ghost':''} sm admin-only" style="width:100%" onclick="openModal(${m.id})">
+        ${done?'결과 수정':'결과 입력'} ${done?'<span class="pill done" style="margin-left:6px">완료</span>':''}
+      </button>
+      ${done ? '' : '<div class="enter-view-only" style="text-align:center;font-size:12px;color:var(--muted)">결과 미입력</div>'}
+    </div>
+    <button class="review-toggle" onclick="toggleReviews(${m.id})">
+      📝 감상문 ${reviews.length ? `<span class="rev-count">${reviews.length}</span>` : '제출'}
+    </button>
+    <div class="reviews" id="rev-${m.id}" style="display:none">
+      ${reviews.map((rv,ri)=>`
+        <div class="review-item">
+          <a href="${esc(rv.url)}" target="_blank" rel="noopener" class="rev-link">🎨 ${esc(rv.author||'학생')}의 감상문</a>
+          <button class="rev-del admin-only" onclick="deleteReview(${m.id},${ri})" title="삭제">✕</button>
+        </div>`).join('') || '<div class="rev-empty">아직 제출된 감상문이 없어요.</div>'}
+      <div class="rev-form">
+        <input type="text" id="rev-name-${m.id}" placeholder="이름/팀" class="rev-in-name">
+        <input type="text" id="rev-url-${m.id}" placeholder="캔바 공유 링크 붙여넣기" class="rev-in-url">
+        <button class="btn sm" onclick="addReview(${m.id})">제출</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- Reviews (Canva links) ---------------- */
+function toggleReviews(id) {
+  const box = document.getElementById('rev-'+id);
+  if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+function addReview(id) {
+  const m = matches.find(x=>x.id===id);
+  if (!m) return;
+  const author = document.getElementById('rev-name-'+id).value.trim();
+  let url = document.getElementById('rev-url-'+id).value.trim();
+  if (!url) { alert('캔바 공유 링크를 붙여넣어 주세요.'); return; }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  try { new URL(url); } catch(e) { alert('올바른 링크 형식이 아닙니다.'); return; }
+  if (!m.reviews) m.reviews = [];
+  m.reviews.push({ author, url });
+  save();
+  renderSchedule();
+  // 다시 펼쳐두기
+  setTimeout(()=>{ const b=document.getElementById('rev-'+id); if(b) b.style.display='block'; }, 0);
+}
+function deleteReview(id, idx) {
+  if (!isAdmin) return;
+  const m = matches.find(x=>x.id===id);
+  if (!m || !m.reviews) return;
+  if (!confirm('이 감상문 링크를 삭제할까요?')) return;
+  m.reviews.splice(idx, 1);
+  save();
+  renderSchedule();
+  setTimeout(()=>{ const b=document.getElementById('rev-'+id); if(b) b.style.display='block'; }, 0);
+}
+
+/* ---------------- Bracket cross-table ---------------- */
+function renderBracket() {
+  const body = document.getElementById('bracket-body');
+  if (!matches.length || teams.length < 2) {
+    body.innerHTML = `<div class="empty"><div class="big">🗂️</div>대진을 편성하면 교차표가 표시됩니다.</div>`;
+    return;
+  }
+  let html = '<table style="font-size:13px"><thead><tr><th style="position:sticky;left:0;background:var(--card);z-index:2">팀 \\ 상대</th>';
+  teams.forEach((t,i)=> html += `<th class="num" title="${esc(t.name)}">${i+1}</th>`);
+  html += '</tr></thead><tbody>';
+  teams.forEach((rowT, ri)=>{
+    html += `<tr><td style="position:sticky;left:0;background:var(--card);z-index:1;white-space:nowrap"><span class="team-badge">${ri+1}</span>${esc(rowT.name)}</td>`;
+    teams.forEach((colT, ci)=>{
+      if (ri===ci) { html += `<td class="num" style="background:#eef0ea"></td>`; return; }
+      const m = findMatch(rowT.id, colT.id);
+      if (!m) { html += `<td class="num" style="color:var(--border)">·</td>`; return; }
+      let txt = '–', cls = '';
+      if (m.played) {
+        const my = m.a===rowT.id ? m.sa : m.sb;
+        const op = m.a===rowT.id ? m.sb : m.sa;
+        txt = my+'–'+op;
+        cls = my>op ? 'winner' : 'loss-cell';
+      }
+      html += `<td class="num ${cls}" style="cursor:pointer;font-weight:600;${cls==='loss-cell'?'color:var(--loss)':''}" onclick="openModal(${m.id})">${txt}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+function findMatch(a,b){ return matches.find(m=>(m.a===a&&m.b===b)||(m.a===b&&m.b===a)); }
+
+/* ---------------- Modal ---------------- */
+function openModal(id) {
+  if (!isAdmin) return;
+  const m = matches.find(x=>x.id===id);
+  if (!m) return;
+  editingMatchId = id;
+  document.getElementById('modal-teams').textContent = teamName(m.a) + '  vs  ' + teamName(m.b);
+  document.getElementById('label-a').textContent = teamName(m.a);
+  document.getElementById('label-b').textContent = teamName(m.b);
+  document.getElementById('score-a').value = m.played ? m.sa : 0;
+  document.getElementById('score-b').value = m.played ? m.sb : 0;
+  document.getElementById('clear-btn').style.display = m.played ? 'block' : 'none';
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('overlay').classList.remove('show');
+  editingMatchId = null;
+}
+function saveScore() {
+  const m = matches.find(x=>x.id===editingMatchId);
+  if (!m) return;
+  const sa = parseInt(document.getElementById('score-a').value)||0;
+  const sb = parseInt(document.getElementById('score-b').value)||0;
+  if (sa === sb) { alert('복식 경기는 무승부가 없습니다. 점수를 확인하세요.'); return; }
+  m.sa = sa; m.sb = sb; m.played = true;
+  save(); closeModal();
+  renderSchedule(); renderBracket(); renderStandings();
+}
+function clearScore() {
+  const m = matches.find(x=>x.id===editingMatchId);
+  if (!m) return;
+  m.sa = null; m.sb = null; m.played = false;
+  save(); closeModal();
+  renderSchedule(); renderBracket(); renderStandings();
+}
+
+/* ---------------- Standings ---------------- */
+function computeStandings() {
+  const tbl = {};
+  teams.forEach(t => tbl[t.id] = {id:t.id, name:t.name, gp:0, w:0, l:0, gf:0, ga:0, pts:0});
+  matches.forEach(m=>{
+    if (!m.played) return;
+    const A = tbl[m.a], B = tbl[m.b];
+    if (!A || !B) return;
+    A.gp++; B.gp++;
+    A.gf += m.sa; A.ga += m.sb;
+    B.gf += m.sb; B.ga += m.sa;
+    if (m.sa > m.sb) { A.w++; B.l++; A.pts+=2; }
+    else { B.w++; A.l++; B.pts+=2; }
+  });
+  const list = Object.values(tbl);
+  list.sort((a,b)=>{
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    if (b.w !== a.w) return b.w - a.w;
+    const da=(a.gf-a.ga), db=(b.gf-b.ga);
+    if (db !== da) return db - da;
+    // head-to-head
+    const h = findMatch(a.id, b.id);
+    if (h && h.played) {
+      const aw = (h.a===a.id ? h.sa>h.sb : h.sb>h.sa);
+      return aw ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name,'ko');
+  });
+  return list;
+}
+function renderStandings() {
+  const tb = document.getElementById('standings-tbody');
+  const empty = document.getElementById('standings-empty');
+  const strip = document.getElementById('stat-strip');
+  if (!matches.length || !teams.length) {
+    tb.innerHTML = ''; empty.style.display='block'; strip.innerHTML=''; return;
+  }
+  empty.style.display='none';
+  const list = computeStandings();
+  const playedN = matches.filter(m=>m.played).length;
+  strip.innerHTML = `
+    <div class="stat"><div class="v">${teams.length}</div><div class="k">참가 팀</div></div>
+    <div class="stat"><div class="v">${playedN}/${matches.length}</div><div class="k">경기 진행</div></div>
+    <div class="stat"><div class="v">${list[0]&&list[0].pts? esc(list[0].name):'–'}</div><div class="k">현재 선두</div></div>`;
+  tb.innerHTML = list.map((r,i)=>{
+    const diff = r.gf - r.ga;
+    const cls = i===0?'rank-1':(i===1?'rank-2':(i===2?'rank-3':''));
+    return `<tr class="${cls}">
+      <td><span class="rk">${i+1}</span></td>
+      <td><strong>${esc(r.name)}</strong></td>
+      <td class="num">${r.gp}</td>
+      <td class="num" style="color:var(--win);font-weight:700">${r.w}</td>
+      <td class="num" style="color:var(--loss)">${r.l}</td>
+      <td class="num hide-m">${r.gf}</td>
+      <td class="num hide-m">${r.ga}</td>
+      <td class="num" style="font-weight:700">${diff>0?'+':''}${diff}</td>
+      <td class="num" style="font-weight:800;color:var(--court)">${r.pts}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---------------- Navigation ---------------- */
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('nav .tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelector(`nav .tab[data-view="${name}"]`).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+document.querySelectorAll('nav .tab').forEach(b=>{
+  b.addEventListener('click', ()=>switchView(b.dataset.view));
+});
+['t-name','t-p1','t-p2'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown', e=>{ if(e.key==='Enter') addTeam(); });
+});
+document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------------- Init ---------------- */
+load();
+// 시작일 입력 기본값
+const sdInput = document.getElementById('start-date');
+if (sdInput) sdInput.value = startDate || defaultStart();
+document.getElementById('admin-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') adminLogin(); });
+document.getElementById('admin-overlay').addEventListener('click', e=>{ if(e.target.id==='admin-overlay') closeAdminModal(); });
+// 파이어베이스 연결 상태 표시
+if (window.__FB_READY) {
+  const ss = document.getElementById('sync-status');
+  if (ss) ss.style.display = 'flex';
+}
+applyAdminUI();
+renderAll();
+</script>
+</body>
+</html>
